@@ -6,6 +6,18 @@ from typing import Any, Literal, Optional
 from pydantic import BaseModel, Field
 
 
+class RegisterRequest(BaseModel):
+    email: str = Field(..., min_length=3, max_length=200)
+    password: str = Field(..., min_length=6, max_length=200)
+    name: str = Field("", max_length=120)
+    department: str = "general"
+
+
+class LoginRequest(BaseModel):
+    email: str = Field(..., min_length=3, max_length=200)
+    password: str = Field(..., min_length=1, max_length=200)
+
+
 class QueryRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=4000)
     department: str = "all"
