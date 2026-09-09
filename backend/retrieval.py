@@ -23,12 +23,17 @@ def _cosine(matrix: np.ndarray, vec: np.ndarray) -> np.ndarray:
 
 
 def search(query: str, departments: list[str] | None = None,
+           confidentialities: list[str] | None = None,
            top_k: int | None = None) -> list[dict[str, Any]]:
-    """Return top_k chunks ranked by cosine similarity, with metadata & score."""
+    """Return top_k chunks ranked by cosine similarity, with metadata & score.
+
+    departments / confidentialities filter which documents are visible to the
+    requesting user (None = no restriction, for admins).
+    """
     settings = get_settings()
     top_k = top_k or settings.top_k
 
-    rows = database.iter_chunks(departments)
+    rows = database.iter_chunks(departments, confidentialities)
     if not rows:
         return []
 
