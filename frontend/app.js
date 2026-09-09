@@ -4,11 +4,26 @@
 const $  = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
-const state = { mode: "hybrid", department: "all", lastSources: {} };
+const state = { mode: "hybrid", department: "all", lastSources: {}, user: null };
+
+const TOKEN_KEY = "eg_token";
+function getToken() { try { return localStorage.getItem(TOKEN_KEY); } catch (e) { return null; } }
+function setToken(t) { try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); } catch (e) {} }
 
 /* ---------- helpers ---------- */
 async function api(path, opts = {}) {
-  const res = await fetch(path, opts);
+  const headers = { ...(opts.headers || {}) };
+  const token = getToken();
+  if (token) headers["Authorization"] = "Bearer " + token;
+  const res = await fetch(path, { ...opts, headers });
+  if (res.status === 401) {
+    // Session expired or missing — send the user back to the login screen.
+    setToken(null);
+    showAuth();
+    let msg = "Please sign in.";
+    try { msg = (await res.json()).detail || msg; } catch (e) {}
+    throw new Error(msg);
+  }
   if (!res.ok) {
     let msg = `Request failed (${res.status})`;
     try { const j = await res.json(); msg = j.detail || msg; } catch (e) {}
@@ -355,13 +370,129 @@ function stat(val, lab, cls = "") {
 }
 
 /* ---------- model status ---------- */
-(async () => {
+async function loadModelStatus() {
   try {
-    const h = await api("/api/health");
+    const h = await api("/api/health");   // health needs no auth
     const dot = $("#llmDot"), txt = $("#llmStatus");
     if (h.llm_configured) { dot.className = "dot dot-ok"; txt.textContent = `Model ready · ${h.chat_model}`; }
     else { dot.className = "dot dot-err"; txt.textContent = "No API key — set GEMINI_API_KEY"; }
   } catch (e) {
     $("#llmDot").className = "dot dot-err"; $("#llmStatus").textContent = "Backend unreachable";
+  }
+}
+
+/* ========================================================================
+   AUTHENTICATION
+   ======================================================================== */
+function showAuth() {
+  document.body.classList.add("locked");
+  $("#authScreen").classList.remove("hidden");
+}
+function hideAuth() {
+  document.body.classList.remove("locked");
+  $("#authScreen").classList.add("hidden");
+}
+
+function applyUser(user) {
+  state.user = user;
+  const isAdmin = user.role === "admin";
+
+  // user chip
+  $("#userAvatar").textContent = (user.name || user.email)[0] || "?";
+  $("#userName").textContent = user.name || user.email;
+  $("#userRole").innerHTML = `${user.role}${isAdmin ? "" : " · " + user.department}` +
+    `<span class="role-badge ${user.role}">${user.role}</span>`;
+
+  // show/hide admin-only parts
+  $$(".admin-only").forEach(el => el.classList.toggle("hidden", !isAdmin));
+
+  // employees are locked to their own department
+  if (!isAdmin) {
+    state.department = user.department;
+    // make sure we're on the chat view (their only view)
+    $$(".nav-item").forEach(b => b.classList.remove("active"));
+    $('.nav-item[data-view="chat"]').classList.add("active");
+    $$(".view").forEach(v => v.classList.add("hidden"));
+    $("#view-chat").classList.remove("hidden");
+  } else {
+    state.department = "all";
+    if ($("#department")) $("#department").value = "all";
+  }
+  hideAuth();
+  loadModelStatus();
+}
+
+/* --- auth screen interactions --- */
+$$(".auth-tab").forEach(tab => tab.addEventListener("click", () => {
+  $$(".auth-tab").forEach(t => t.classList.remove("active"));
+  tab.classList.add("active");
+  const isLogin = tab.dataset.tab === "login";
+  $("#loginForm").classList.toggle("hidden", !isLogin);
+  $("#registerForm").classList.toggle("hidden", isLogin);
+  $("#authError").textContent = "";
+}));
+
+$$(".auth-demo button").forEach(b => b.addEventListener("click", () => {
+  // switch to login tab and fill the demo credentials
+  $('.auth-tab[data-tab="login"]').click();
+  $("#loginForm").email.value = b.dataset.email;
+  $("#loginForm").password.value = b.dataset.pw;
+}));
+
+$("#loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  $("#authError").textContent = "";
+  const btn = e.target.querySelector("button"); btn.disabled = true;
+  try {
+    const data = await api("/api/auth/login", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: e.target.email.value, password: e.target.password.value }),
+    });
+    setToken(data.token);
+    applyUser(data.user);
+    toast(`Welcome back, ${data.user.name || data.user.email}!`);
+  } catch (err) {
+    $("#authError").textContent = err.message;
+  } finally { btn.disabled = false; }
+});
+
+$("#registerForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  $("#authError").textContent = "";
+  const btn = e.target.querySelector("button"); btn.disabled = true;
+  try {
+    const data = await api("/api/auth/register", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: e.target.name.value, email: e.target.email.value,
+        password: e.target.password.value, department: e.target.department.value,
+      }),
+    });
+    setToken(data.token);
+    applyUser(data.user);
+    toast("Account created — you're signed in.");
+  } catch (err) {
+    $("#authError").textContent = err.message;
+  } finally { btn.disabled = false; }
+});
+
+$("#logoutBtn").addEventListener("click", () => {
+  setToken(null);
+  state.user = null;
+  showAuth();
+  // reset forms
+  $("#loginForm").reset(); $("#registerForm").reset();
+  toast("Signed out.");
+});
+
+/* --- on load: resume session if a valid token exists --- */
+(async () => {
+  const token = getToken();
+  if (!token) { showAuth(); return; }
+  try {
+    const data = await api("/api/auth/me");
+    applyUser(data.user);
+  } catch (e) {
+    showAuth();   // token invalid/expired
   }
 })();
