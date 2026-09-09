@@ -134,19 +134,28 @@ def _sources_payload(hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ]
 
 
-def answer_query(query: str, department: str = "all", mode: str = "hybrid") -> dict[str, Any]:
+def answer_query(query: str, department: str = "all", mode: str = "hybrid",
+                 visibility: dict[str, Any] | None = None) -> dict[str, Any]:
     settings = get_settings()
     started = time.time()
     answer_id = str(uuid.uuid4())
 
-    departments = None if department in ("all", "", None) else [department, "general"]
+    # `visibility` is computed from the logged-in user (auth.visibility_for).
+    # It enforces which departments and confidentiality levels the user may see.
+    if visibility is None:
+        departments = None if department in ("all", "", None) else [department, "general"]
+        confidentialities = None
+    else:
+        departments = visibility.get("departments")
+        confidentialities = visibility.get("confidentialities")
 
     # ---- retrieval (skipped in pure general mode) --------------------
     hits: list[dict[str, Any]] = []
     top_score = 0.0
     if mode != "general":
         try:
-            hits = retrieval.search(query, departments=departments)
+            hits = retrieval.search(query, departments=departments,
+                                    confidentialities=confidentialities)
         except LLMNotConfigured:
             raise
         top_score = hits[0]["score"] if hits else 0.0
