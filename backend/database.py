@@ -257,4 +257,67 @@ def iter_chunks(departments: list[str] | None = None,
 # --------------------------------------------------------------------------
 # Feedback & logging
 # --------------------------------------------------------------------------
-def
+def add_feedback(answer_id: str, query: str, rating: str, reason: str | None) -> str:
+    conn = get_conn()
+    fid = str(uuid.uuid4())
+    conn.execute(
+        "INSERT INTO feedback (id, answer_id, query, rating, reason, created_at) VALUES (?,?,?,?,?,?)",
+        (fid, answer_id, query, rating, reason, time.time()),
+    )
+    conn.commit()
+    return fid
+
+
+def log_query(query: str, department: str, mode: str, source_type: str,
+              top_score: float, latency_ms: int) -> None:
+    conn = get_conn()
+    conn.execute(
+        """INSERT INTO query_log
+           (id, query, department, mode, source_type, top_score, latency_ms, created_at)
+           VALUES (?,?,?,?,?,?,?,?)""",
+        (str(uuid.uuid4()), query, department, mode, source_type,
+         top_score, latency_ms, time.time()),
+    )
+    conn.commit()
+
+
+def analytics_summary() -> dict[str, Any]:
+    conn = get_conn()
+
+    def scalar(sql: str, default: Any = 0) -> Any:
+        row = conn.execute(sql).fetchone()
+        val = row[0] if row else None
+        return val if val is not None else default
+
+    total_docs = scalar("SELECT COUNT(*) FROM documents")
+    total_chunks = scalar("SELECT COUNT(*) FROM chunks")
+    total_queries = scalar("SELECT COUNT(*) FROM query_log")
+    no_answer = scalar("SELECT COUNT(*) FROM query_log WHERE source_type='none'")
+    from_docs = scalar("SELECT COUNT(*) FROM query_log WHERE source_type IN ('documents','mixed')")
+    avg_latency = scalar("SELECT AVG(latency_ms) FROM query_log", 0)
+    up = scalar("SELECT COUNT(*) FROM feedback WHERE rating='up'")
+    down = scalar("SELECT COUNT(*) FROM feedback WHERE rating='down'")
+
+    by_dept = conn.execute(
+        "SELECT department, COUNT(*) c FROM query_log GROUP BY department ORDER BY c DESC"
+    ).fetchall()
+    repeated = conn.execute(
+        """SELECT query, COUNT(*) c FROM query_log
+           GROUP BY lower(query) HAVING c > 1 ORDER BY c DESC LIMIT 8"""
+    ).fetchall()
+
+    no_answer_rate = round(100 * no_answer / total_queries, 1) if total_queries else 0.0
+    citation_coverage = round(100 * from_docs / total_queries, 1) if total_queries else 0.0
+
+    return {
+        "total_documents": total_docs,
+        "total_chunks": total_chunks,
+        "total_queries": total_queries,
+        "no_answer_rate": no_answer_rate,
+        "citation_coverage": citation_coverage,
+        "avg_latency_ms": round(avg_latency or 0),
+        "feedback_up": up,
+        "feedback_down": down,
+        "queries_by_department": [dict(r) for r in by_dept],
+        "repeated_questions": [dict(r) for r in repeated],
+    }
