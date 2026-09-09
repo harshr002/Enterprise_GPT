@@ -9,7 +9,70 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
-<body>
+<body class="locked">
+  <!-- ===== Login / Signup screen (shown until authenticated) ===== -->
+  <div class="auth-screen" id="authScreen">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <div class="brand-mark">EG</div>
+        <div>
+          <strong>Enterprise GPT</strong>
+          <span>AI Knowledge Assistant</span>
+        </div>
+      </div>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-tab="login">Sign in</button>
+        <button class="auth-tab" data-tab="register">Create account</button>
+      </div>
+
+      <!-- Sign in -->
+      <form id="loginForm" class="auth-form">
+        <label>Work email
+          <input class="input" type="email" name="email" placeholder="you@company.com" required />
+        </label>
+        <label>Password
+          <input class="input" type="password" name="password" placeholder="••••••••" required />
+        </label>
+        <button class="btn primary auth-submit" type="submit">Sign in</button>
+      </form>
+
+      <!-- Register -->
+      <form id="registerForm" class="auth-form hidden">
+        <label>Full name
+          <input class="input" name="name" placeholder="Your name" required />
+        </label>
+        <label>Work email
+          <input class="input" type="email" name="email" placeholder="you@company.com" required />
+        </label>
+        <label>Department
+          <select class="select" name="department">
+            <option value="general">General</option>
+            <option value="delivery">Delivery</option>
+            <option value="hr">HR</option>
+            <option value="sales">Sales</option>
+            <option value="engineering">Engineering</option>
+            <option value="operations">Operations</option>
+          </select>
+        </label>
+        <label>Password
+          <input class="input" type="password" name="password" placeholder="At least 6 characters" required />
+        </label>
+        <button class="btn primary auth-submit" type="submit">Create account</button>
+        <p class="auth-note">New accounts are created as <strong>Employee</strong> — access is limited to your department's documents.</p>
+      </form>
+
+      <div class="auth-error" id="authError"></div>
+
+      <div class="auth-demo">
+        <span>Demo accounts (click to fill):</span>
+        <button type="button" data-email="admin@demo.com" data-pw="admin123">👑 Admin</button>
+        <button type="button" data-email="hr@demo.com" data-pw="password123">🧑‍💼 HR employee</button>
+        <button type="button" data-email="engineer@demo.com" data-pw="password123">👩‍💻 Engineer</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== Sidebar ===== -->
   <aside class="sidebar">
     <div class="brand">
@@ -24,15 +87,15 @@
       <button class="nav-item active" data-view="chat">
         <span class="ic">💬</span> Ask a question
       </button>
-      <button class="nav-item" data-view="knowledge">
+      <button class="nav-item admin-only" data-view="knowledge">
         <span class="ic">📚</span> Knowledge base
       </button>
-      <button class="nav-item" data-view="analytics">
+      <button class="nav-item admin-only" data-view="analytics">
         <span class="ic">📊</span> Usage &amp; quality
       </button>
     </nav>
 
-    <div class="side-section">
+    <div class="side-section admin-only" id="deptSection">
       <label class="side-label">Department context</label>
       <select id="department" class="select">
         <option value="all">All departments</option>
@@ -53,6 +116,15 @@
         <button data-mode="general" title="Answer anything from general knowledge, like a web search">Ask anything</button>
       </div>
       <p class="mode-hint" id="modeHint">Uses your documents first, then falls back to general knowledge — with clear labels.</p>
+    </div>
+
+    <div class="user-chip" id="userChip">
+      <div class="user-avatar" id="userAvatar">?</div>
+      <div class="user-meta">
+        <strong id="userName">—</strong>
+        <span id="userRole">—</span>
+      </div>
+      <button class="logout-btn" id="logoutBtn" title="Sign out">⏻</button>
     </div>
 
     <div class="side-foot">
