@@ -1,0 +1,21 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Data / DB (keep the folder + sample docs, ignore the generated DB)
+data/knowledge.db
+data/*.db
+data/uploads/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.log

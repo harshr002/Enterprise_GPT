@@ -1,0 +1,24 @@
+# One-click-ish deploy config for Render (https://render.com).
+# In the Render dashboard: New + > Blueprint > point at this repo.
+services:
+  - type: web
+    name: infosys-ai-knowledge-assistant
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false          # set this secret in the Render dashboard
+      - key: GEMINI_CHAT_MODEL
+        value: gemini-2.0-flash
+      - key: GEMINI_EMBED_MODEL
+        value: text-embedding-004
+      - key: DATABASE_PATH
+        value: /var/data/knowledge.db
+      - key: CORS_ORIGINS
+        value: "*"
+    disk:
+      name: knowledge-data
+      mountPath: /var/data
+      sizeGB: 1

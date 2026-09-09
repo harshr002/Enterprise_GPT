@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Enterprise GPT · AI Knowledge Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <!-- ===== Sidebar ===== -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">EG</div>
+      <div class="brand-text">
+        <strong>Enterprise GPT</strong>
+        <span>AI Knowledge Assistant</span>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <button class="nav-item active" data-view="chat">
+        <span class="ic">💬</span> Ask a question
+      </button>
+      <button class="nav-item" data-view="knowledge">
+        <span class="ic">📚</span> Knowledge base
+      </button>
+      <button class="nav-item" data-view="analytics">
+        <span class="ic">📊</span> Usage &amp; quality
+      </button>
+    </nav>
+
+    <div class="side-section">
+      <label class="side-label">Department context</label>
+      <select id="department" class="select">
+        <option value="all">All departments</option>
+        <option value="delivery">Delivery</option>
+        <option value="hr">HR</option>
+        <option value="sales">Sales</option>
+        <option value="engineering">Engineering</option>
+        <option value="operations">Operations</option>
+        <option value="general">General</option>
+      </select>
+    </div>
+
+    <div class="side-section">
+      <label class="side-label">Answering mode</label>
+      <div class="mode-toggle" id="modeToggle">
+        <button data-mode="hybrid" class="active" title="Answer from your documents when possible, otherwise general knowledge">Hybrid</button>
+        <button data-mode="docs_only" title="Only answer from your uploaded documents">Docs only</button>
+        <button data-mode="general" title="Answer anything from general knowledge, like a web search">Ask anything</button>
+      </div>
+      <p class="mode-hint" id="modeHint">Uses your documents first, then falls back to general knowledge — with clear labels.</p>
+    </div>
+
+    <div class="side-foot">
+      <span id="llmDot" class="dot dot-warn"></span>
+      <span id="llmStatus">Checking model…</span>
+    </div>
+  </aside>
+
+  <!-- ===== Main ===== -->
+  <main class="main">
+    <!-- CHAT VIEW -->
+    <section class="view" id="view-chat">
+      <header class="topbar">
+        <div>
+          <h1>Ask a question</h1>
+          <p class="sub">Grounded, citation-backed answers from approved internal knowledge — with a general-knowledge fallback.</p>
+        </div>
+        <button class="btn ghost" id="clearChat">Clear</button>
+      </header>
+
+      <div class="chat" id="chat">
+        <div class="empty" id="chatEmpty">
+          <div class="empty-mark">💡</div>
+          <h2>What would you like to know?</h2>
+          <p>Ask about SOPs, HR policies, project manuals, or engineering runbooks — or switch to <em>Ask anything</em> for general questions.</p>
+          <div class="suggestions" id="suggestions">
+            <button>What is the leave carry-forward policy?</button>
+            <button>Steps to escalate a Sev-1 production incident</button>
+            <button>How do I onboard onto a new delivery project?</button>
+            <button>Explain retrieval-augmented generation</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="composer">
+        <textarea id="queryInput" rows="1" placeholder="Ask anything… (Enter to send, Shift+Enter for a new line)"></textarea>
+        <button class="btn primary send" id="sendBtn" aria-label="Send">
+          <span class="send-ic">↑</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- KNOWLEDGE VIEW -->
+    <section class="view hidden" id="view-knowledge">
+      <header class="topbar">
+        <div>
+          <h1>Knowledge base</h1>
+          <p class="sub">Upload approved documents. They are parsed, chunked, embedded and indexed for retrieval.</p>
+        </div>
+        <button class="btn primary" id="openUpload">+ Upload document</button>
+      </header>
+
+      <div class="doc-list" id="docList"></div>
+    </section>
+
+    <!-- ANALYTICS VIEW -->
+    <section class="view hidden" id="view-analytics">
+      <header class="topbar">
+        <div>
+          <h1>Usage &amp; quality</h1>
+          <p class="sub">Adoption, retrieval health and feedback — the productivity signal.</p>
+        </div>
+        <button class="btn ghost" id="refreshAnalytics">Refresh</button>
+      </header>
+
+      <div class="stat-grid" id="statGrid"></div>
+
+      <div class="panels">
+        <div class="panel">
+          <h3>Queries by department</h3>
+          <div id="byDept" class="bars"></div>
+        </div>
+        <div class="panel">
+          <h3>Repeated questions (knowledge gaps)</h3>
+          <div id="repeated" class="repeated"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===== Upload modal ===== -->
+  <div class="modal-overlay hidden" id="uploadModal">
+    <div class="modal">
+      <div class="modal-head">
+        <h2>Upload to knowledge base</h2>
+        <button class="modal-close" id="closeUpload">✕</button>
+      </div>
+      <form id="uploadForm">
+        <div class="drop" id="drop">
+          <input type="file" id="fileInput" accept=".pdf,.docx,.txt,.md,.csv" hidden />
+          <div class="drop-inner">
+            <div class="drop-ic">⬆</div>
+            <p><strong id="fileLabel">Click to choose a file</strong></p>
+            <span>PDF, DOCX, TXT, MD or CSV</span>
+          </div>
+        </div>
+        <div class="grid2">
+          <label>Department
+            <select name="department" class="select">
+              <option value="general">General</option>
+              <option value="delivery">Delivery</option>
+              <option value="hr">HR</option>
+              <option value="sales">Sales</option>
+              <option value="engineering">Engineering</option>
+              <option value="operations">Operations</option>
+            </select>
+          </label>
+          <label>Document type
+            <select name="doc_type" class="select">
+              <option value="sop">SOP</option>
+              <option value="policy">Policy</option>
+              <option value="manual">Project manual</option>
+              <option value="runbook">Runbook</option>
+              <option value="playbook">Sales playbook</option>
+              <option value="document">Other</option>
+            </select>
+          </label>
+          <label>Owner
+            <input name="owner" class="input" placeholder="e.g. HR Ops" />
+          </label>
+          <label>Confidentiality
+            <select name="confidentiality" class="select">
+              <option value="internal">Internal</option>
+              <option value="restricted">Restricted</option>
+              <option value="public">Public</option>
+            </select>
+          </label>
+          <label class="span2">Effective date
+            <input name="effective_date" class="input" type="date" />
+          </label>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn ghost" id="cancelUpload">Cancel</button>
+          <button type="submit" class="btn primary" id="uploadBtn">Index document</button>
+        </div>
+        <div class="upload-status" id="uploadStatus"></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
