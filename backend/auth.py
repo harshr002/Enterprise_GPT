@@ -178,4 +178,9 @@ def seed_default_users() -> None:
         role="admin", department="all",
     )
     # A couple of demo employees to show department-scoped access.
-    for email, dept in [("hr@demo.com", "hr"), ("engineer@demo.com",
+    for email, dept in [("hr@demo.com", "hr"), ("engineer@demo.com", "engineering")]:
+        database.create_user(
+            email=email, name=email.split("@")[0].upper(),
+            password_hash=hash_password("password123"),
+            role="employee", department=dept,
+        )
