@@ -6,15 +6,73 @@ Kept provider-specific but tiny. To switch providers, reimplement
 from __future__ import annotations
 
 import json
+import time
 from typing import Any
 
 import httpx
 
 from .config import get_settings
 
+# Transient statuses worth retrying (server overloaded / rate-limited).
+_RETRY_STATUSES = {429, 500, 502, 503, 504}
+_MAX_RETRIES = 3          # total attempts = 1 + retries
+_BACKOFF_SECONDS = 1.5    # grows each retry: 1.5s, 3s, 4.5s
+
 
 class LLMNotConfigured(RuntimeError):
     """Raised when no API key is available."""
+
+
+class LLMError(RuntimeError):
+    """Raised when the LLM provider returns an error (bad key, model, quota…)."""
+
+
+def _post(client: httpx.Client, url: str, payload: dict) -> dict:
+    """POST to Gemini with automatic retry on transient errors.
+
+    A 503/429/500 usually means the model is momentarily overloaded — we wait
+    briefly and retry a few times before giving up, so a busy-server blip does
+    not surface to the user.
+    """
+    last_detail = ""
+    for attempt in range(_MAX_RETRIES + 1):
+        try:
+            resp = client.post(url, json=payload)
+        except httpx.HTTPError as e:
+            # Network hiccup — retry, then give up.
+            last_detail = str(e)
+            if attempt < _MAX_RETRIES:
+                time.sleep(_BACKOFF_SECONDS * (attempt + 1))
+                continue
+            raise LLMError(f"Could not reach the AI service: {e}") from e
+
+        if resp.status_code < 400:
+            return resp.json()
+
+        # Pull Gemini's own error message out of the response body.
+        try:
+            last_detail = resp.json().get("error", {}).get("message", "")
+        except Exception:
+            last_detail = resp.text[:300]
+
+        # Retry transient errors; fail fast on real ones (bad key, bad model).
+        if resp.status_code in _RETRY_STATUSES and attempt < _MAX_RETRIES:
+            time.sleep(_BACKOFF_SECONDS * (attempt + 1))
+            continue
+
+        hint = ""
+        if resp.status_code == 404:
+            hint = " (the model name may be wrong or unavailable for your key — try GEMINI_CHAT_MODEL=gemini-2.5-flash)"
+        elif resp.status_code in (401, 403):
+            hint = " (your GEMINI_API_KEY looks invalid or the Generative Language API isn't enabled for it)"
+        elif resp.status_code == 429:
+            hint = " (you've hit the free-tier rate/quota limit — wait a minute and retry)"
+        elif resp.status_code == 503:
+            hint = " (the model is temporarily overloaded — retry, or switch GEMINI_CHAT_MODEL to gemini-2.5-flash)"
+        raise LLMError(f"AI service error {resp.status_code}: {last_detail}{hint}")
+
+    # Exhausted retries on a transient error.
+    raise LLMError(f"AI service busy after {_MAX_RETRIES + 1} attempts: {last_detail}")
 
 
 def _require_key() -> str:
@@ -44,9 +102,7 @@ def embed_texts(texts: list[str], task_type: str = "RETRIEVAL_DOCUMENT") -> list
                 "content": {"parts": [{"text": text[:8000]}]},
                 "taskType": task_type,
             }
-            resp = client.post(url, json=payload)
-            resp.raise_for_status()
-            data = resp.json()
+            data = _post(client, url, payload)
             vectors.append(data["embedding"]["values"])
     return vectors
 
@@ -70,9 +126,7 @@ def _generate(prompt: str, *, json_mode: bool, temperature: float = 0.2) -> str:
         "generationConfig": gen_config,
     }
     with httpx.Client(timeout=90) as client:
-        resp = client.post(url, json=payload)
-        resp.raise_for_status()
-        data = resp.json()
+        data = _post(client, url, payload)
     try:
         return data["candidates"][0]["content"]["parts"][0]["text"]
     except (KeyError, IndexError):
