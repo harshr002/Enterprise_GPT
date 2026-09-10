@@ -80,11 +80,4 @@ Then open the URL in a browser, go to **Knowledge base → Upload document**, ad
 file, switch to **Ask a question**, and query it. Add your live URL to the top of
 `README.md`.
 
-## Recording the demo video
-Suggested flow (matches the brief's demo criteria):
-1. Show the empty knowledge base, then upload a document (watch it index).
-2. Ask a question answered **from the document** — show the citations + source cards.
-3. Ask something the docs don't cover in **Hybrid** — show the "general knowledge" label.
-4. Switch to **Ask anything** and ask a general question (the "answers like Google" part).
-5. Open **Usage & quality** to show metrics, feedback and repeated-question detection.
-Upload to Google Drive with "Anyone with the link can view".
+
