@@ -13,6 +13,20 @@ external vector database required to get started.
 
 ![architecture](docs/screenshots/placeholder.md)
 
+
+# 🎥 Demo & Project Video
+
+### 🚀 Live Demo
+
+👉 **[Try the Enterprise AI Knowledge Assistant](https://enterprise-gpt-prk1.onrender.com)**
+
+### 🎬 Project Demo Video
+
+👉 **[Watch the Project Demo Video](https://drive.google.com/file/d/18yQOMp-r0isK5hQCObWQry128pmMW39E/view?usp=sharing)**
+
+
+
+
 ---
 
 ## ✨ What it does
@@ -169,15 +183,6 @@ See [`docs/security_notes.md`](docs/security_notes.md).
 Built for the Infosys **AI Knowledge Assistant (Enterprise GPT)** brief.
 
 
-# 🎥 Demo & Project Video
-
-### 🚀 Live Demo
-
-👉 **[Try the Enterprise AI Knowledge Assistant](https://enterprise-gpt-prk1.onrender.com)**
-
-### 🎬 Project Demo Video
-
-👉 **[Watch the Project Demo Video](https://drive.google.com/file/d/18yQOMp-r0isK5hQCObWQry128pmMW39E/view?usp=sharing)**
 
 
 ---
