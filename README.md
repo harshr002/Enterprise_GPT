@@ -167,3 +167,27 @@ See [`docs/security_notes.md`](docs/security_notes.md).
 
 ---
 Built for the Infosys **AI Knowledge Assistant (Enterprise GPT)** brief.
+
+
+# 🎥 Demo & Project Video
+
+### 🚀 Live Demo
+
+👉 **[Try the Enterprise AI Knowledge Assistant](https://enterprise-gpt-prk1.onrender.com)**
+
+### 🎬 Project Demo Video
+
+👉 **[Watch the Project Demo Video](https://drive.google.com/file/d/18yQOMp-r0isK5hQCObWQry128pmMW39E/view?usp=sharing)**
+
+
+---
+
+
+# 📄 License
+
+This project is intended for educational, demonstration, and development purposes.
+
+See the repository license and project documentation for additional information.
+
+---
+
